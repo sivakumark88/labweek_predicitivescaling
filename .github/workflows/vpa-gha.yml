@@ -1,0 +1,44 @@
+name: Update VPA and Apply to Minikube
+run-name: Update VPA and Apply to Minikube
+
+on:
+  push:
+    branches:
+      - vpa-gha
+env:
+  MIN_CPU: 250m
+  MAX_CPU: 1
+  MIN_MEMORY: 250Mi
+  MAX_MEMORY: 1Gi
+
+jobs:
+  update-vpa:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # - name: Install kubectl
+      #   run: |
+      #     sudo apt-get update -y
+      #     sudo apt-get install -y kubectl
+
+      # - name: Set up Minikube
+      #   run: |
+      #     curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+      #     chmod +x minikube
+      #     sudo mv minikube /usr/local/bin/
+
+      #     minikube start --driver=none
+
+      - name: Update VPA YAML
+        run: |
+          sed -i "s|memory: 500Mi|memory: $MIN_MEMORY|g" vpa.yml
+          sed -i "s|cpu: 500m|cpu: $MIN_CPU|g" vpa.yml
+          sed -i "s|memory: 2Gi|memory: $MAX_MEMORY|g" vpa.yml
+          sed -i "s|cpu: 2|cpu: $MAX_CPU|g" vpa.yml
+
+      # - name: Apply VPA to Minikube
+      #   run: |
+      #     kubectl apply -f vpa.yml
