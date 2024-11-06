@@ -19,6 +19,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install python
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y python3
+
       # - name: Install kubectl
       #   run: |
       #     sudo apt-get update -y
@@ -32,12 +37,13 @@ jobs:
 
       #     minikube start --driver=none
 
-      - name: Update VPA YAML
+      - name: Update Vertical Pod Autoscaler YAML
         run: |
-          sed -i "s|memory: 500Mi|memory: $MIN_MEMORY|g" vpa.yml
-          sed -i "s|cpu: 500m|cpu: $MIN_CPU|g" vpa.yml
-          sed -i "s|memory: 2Gi|memory: $MAX_MEMORY|g" vpa.yml
-          sed -i "s|cpu: 2|cpu: $MAX_CPU|g" vpa.yml
+          python3 update_vpa.py
+          # sed -i "s|memory: 500Mi|memory: $MIN_MEMORY|g" vpa.yml
+          # sed -i "s|cpu: 500m|cpu: $MIN_CPU|g" vpa.yml
+          # sed -i "s|memory: 2Gi|memory: $MAX_MEMORY|g" vpa.yml
+          # sed -i "s|cpu: 2|cpu: $MAX_CPU|g" vpa.yml
 
       # - name: Apply VPA to Minikube
       #   run: |
