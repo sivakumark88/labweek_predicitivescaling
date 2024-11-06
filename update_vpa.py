@@ -13,28 +13,18 @@ vpa_file_path = 'vpa.yml'
 with open(vpa_file_path, 'r') as file:
     vpa_data = yaml.load(file, Loader=yaml.FullLoader)
 
-# print(vpa_data)
+print(vpa_data)
 
-try:
-    container_policy = next(
-        policy for policy in vpa_data['spec']['resourcePolicy']['containerPolicies']
-        if policy['containerName'] == 'my-container'
-    )
-    # Update minAllowed values
-    container_policy['minAllowed']['memory'] = min_memory
-    container_policy['minAllowed']['cpu'] = min_cpu
-    
-    # Update maxAllowed values
-    container_policy['maxAllowed']['memory'] = max_memory
-    container_policy['maxAllowed']['cpu'] = max_cpu
+# # Update minAllowed values
+# vpa_data['spec']['resourcePolicy']['containerPolicies'][0]['minAllowed']['memory'] = min_memory
+# vpa_data['spec']['resourcePolicy']['containerPolicies'][0]['minAllowed']['cpu'] = min_cpu
 
-except KeyError as e:
-    print(f"Error: The YAML structure does not match the expected format. Missing key: {e}")
-except StopIteration:
-    print("Error: Could not find container policy for 'my-container'.")
-else:
-    # Save the updated YAML file
-    with open(vpa_file_path, 'w') as file:
-        yaml.safe_dump(vpa_data, file, default_flow_style=False)
+# # Update maxAllowed values
+# vpa_data['spec']['resourcePolicy']['containerPolicies'][0]['maxAllowed']['memory'] = max_memory
+# vpa_data['spec']['resourcePolicy']['containerPolicies'][0]['maxAllowed']['cpu'] = max_cpu
 
-    print(f"Updated {vpa_file_path} with new CPU and memory limits.")
+# # Save the updated YAML file
+# with open(vpa_file_path, 'w') as file:
+#     yaml.safe_dump(vpa_data, file)
+
+# print(f"Updated {vpa_file_path} with new CPU and memory limits.")
