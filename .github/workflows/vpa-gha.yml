@@ -60,7 +60,11 @@ jobs:
       # - name: Apply VPA to Minikube
       #   run: |
       #     kubectl apply -f vpa.yml
-
+      - name: Configure Git
+        run: |
+          git config --local user.email "git_bot@example.com"
+          git config --local user.name "git_bot"
+          
       - name: Write invertory file to repo
         run: |
             ls -a
