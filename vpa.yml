@@ -4,19 +4,21 @@ metadata:
   name: my-vpa
   namespace: default
 spec:
+  resourcePolicy:
+    containerPolicies:
+    - containerName: my-container
+      controlledResources:
+      - memory
+      - cpu
+      maxAllowed:
+        cpu: '1'
+        memory: 1Gi
+      minAllowed:
+        cpu: 300m
+        memory: 300Mi
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: my-deployment
   updatePolicy:
-    updateMode: "Auto"
-  resourcePolicy:
-    containerPolicies:
-      - containerName: my-container
-        minAllowed:
-          memory: 500Mi
-          cpu: 500m
-        maxAllowed:
-          memory: 2Gi
-          cpu: 2
-        controlledResources: ["memory", "cpu"]
+    updateMode: Auto

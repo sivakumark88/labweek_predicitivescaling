@@ -49,7 +49,22 @@ jobs:
           # sed -i "s|cpu: 500m|cpu: $MIN_CPU|g" vpa.yml
           # sed -i "s|memory: 2Gi|memory: $MAX_MEMORY|g" vpa.yml
           # sed -i "s|cpu: 2|cpu: $MAX_CPU|g" vpa.yml
+          cat vpa.yml
+
 
       # - name: Apply VPA to Minikube
       #   run: |
       #     kubectl apply -f vpa.yml
+
+      - name: Write invertory file to repo
+        run: |
+            ls -a
+            if git diff --quiet -- vpa.yml; then
+            echo "No changes to vpa.yml."
+            else
+            git add vpa.yml
+            git commit -m "Update VPA"
+            git push
+            fi            
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}        
