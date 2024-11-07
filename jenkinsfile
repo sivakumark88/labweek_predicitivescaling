@@ -1,0 +1,163 @@
+pipeline {
+    agent any
+    stages {
+        stage('Install kubectl') {
+            steps {
+                script {
+                    // Create a local directory for kubectl
+                    sh '''
+                    mkdir -p ~/.local/bin
+                    curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/darwin/amd64/kubectl"
+                    chmod +x ./kubectl
+                    mv ./kubectl ~/.local/bin/kubectl
+                    '''
+                    // Add the local bin to the PATH
+                    env.PATH += ":$HOME/.local/bin"
+                }
+            }
+        }
+        stage('Run kubectl commands') {
+            steps {
+                script {
+                    // Ensure the PATH is set for the current session
+                    sh '''
+                    export PATH=$PATH:$HOME/.local/bin
+                    kubectl config use-context minikube
+                    kubectl get nodes
+                    kubectl get pods -A
+                    pip install requests pandas scikit-learn joblib
+                    '''
+                }
+            }
+        }
+        stage('Run Python Script') {
+            steps {
+                script {
+            def pythonScript = '''
+import os
+import requests
+import pandas as pd
+from datetime import datetime
+
+# Define Prometheus URL and Queries
+PROMETHEUS_URL = 'http://localhost:9090/api/v1/query'
+# CPU_QUERY = 'rate(container_cpu_usage_seconds_total[5m])'
+# MEMORY_QUERY = 'container_memory_usage_bytes'
+MEMORY_QUERY = 'container_memory_usage_bytes{namespace="default",pod=~"nginx-.*"}'
+CPU_QUERY = 'rate(container_cpu_usage_seconds_total{namespace="default",pod=~"nginx-.*"}[5m])'
+
+
+def query_prometheus(query):
+    response = requests.get(PROMETHEUS_URL, params={'query': query})
+    print(response)
+    return response.json()
+def parse_prometheus_response(data):
+    results = []
+    if data['status'] == 'success':
+        for result in data['data']['result']:
+            pod_name = result['metric'].get('pod', 'unknown')
+            value = result['value']
+            timestamp = datetime.fromtimestamp(float(value[0])).isoformat() + 'Z'  # Format as ISO 8601
+            usage = float(value[1])
+            results.append((timestamp, pod_name, usage))
+    return results
+
+# Query CPU data
+cpu_data = query_prometheus(CPU_QUERY)
+print(cpu_data)
+cpu_df = pd.DataFrame(parse_prometheus_response(cpu_data), columns=['timestamp', 'pod_name', 'cpu_usage'])
+
+# Query Memory data
+memory_data = query_prometheus(MEMORY_QUERY)
+print(memory_data)
+memory_df = pd.DataFrame(parse_prometheus_response(memory_data), columns=['timestamp', 'pod_name', 'memory_usage'])
+
+# Combine CPU and Memory DataFrames
+combined_df = pd.merge(cpu_df, memory_df, on=['timestamp', 'pod_name'], how='outer')
+
+# Fill NaN values with 0 or apply other strategies
+combined_df['cpu_usage'].fillna(0, inplace=True)  # Replace NaN with 0
+combined_df['memory_usage'].fillna(0, inplace=True)  # Replace NaN with 0
+
+# Assuming you have some logic to determine target requests
+# Here, we set some dummy target values for demonstration
+combined_df['target_cpu_request'] = combined_df['cpu_usage'].apply(lambda x: x * 1.2 if x else 0)  # Example logic
+combined_df['target_memory_request'] = combined_df['memory_usage'].apply(lambda x: x * 1.2 if x else 0)  # Example logic
+
+# Reorder the columns to match the expected CSV format
+combined_df = combined_df[['timestamp', 'pod_name', 'cpu_usage', 'memory_usage', 'target_cpu_request', 'target_memory_request']]
+
+# Check if the CSV file already exists
+file_path = 'k8s_resource_usage.csv'
+
+if os.path.exists(file_path):
+    # Append data to the existing CSV file
+    combined_df.to_csv(file_path, mode='a', header=False, index=False)
+else:
+    # Create a new CSV file
+    combined_df.to_csv(file_path, index=False)
+print("Data has been saved to k8s_resource_usage.csv")
+'''
+            writeFile file: 'hello_world.py', text: pythonScript
+            sh 'python3 hello_world.py'
+        }
+    }
+}
+        stage('copy') {
+            steps {
+                script {
+                    // Ensure the PATH is set for the current session
+                    sh '''
+                    cp ~/.jenkins/workspace/ml/k8s_resource_usage.csv ~/Documents
+                    '''
+                }
+            }
+        }
+        stage('Run Python Script') {
+            steps {
+                script {
+            def model = '''
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+import joblib
+
+# Load the CSV file
+data = pd.read_csv('k8s_resource_usage.csv')
+
+# Split the data into input features (X) and target values (y)
+X = data[['cpu_usage', 'memory_usage']]  # Input: CPU and memory usage
+y_cpu = data['target_cpu_request']       # Target: CPU request
+y_memory = data['target_memory_request'] # Target: Memory request
+
+# Split into training and testing sets
+X_train, X_test, y_cpu_train, y_cpu_test, y_memory_train, y_memory_test = train_test_split(
+    X, y_cpu, y_memory, test_size=0.2, random_state=42)
+
+# Train a Random Forest Regressor for CPU request
+cpu_model = RandomForestRegressor()
+cpu_model.fit(X_train, y_cpu_train)
+
+# Train a Random Forest Regressor for Memory request
+memory_model = RandomForestRegressor()
+memory_model.fit(X_train, y_memory_train)
+
+# Save the models to disk
+joblib.dump(cpu_model, 'cpu_optimizer_model.pkl')
+joblib.dump(memory_model, 'memory_optimizer_model.pkl')
+
+# Test the models by predicting on the test set
+cpu_predictions = cpu_model.predict(X_test)
+memory_predictions = memory_model.predict(X_test)
+
+print("CPU predictions:", cpu_predictions)
+print("Memory predictions:", memory_predictions)
+
+'''
+            writeFile file: 'model.py', text: model
+            sh 'python3 model.py'
+        }
+    }
+}
+    }
+}
