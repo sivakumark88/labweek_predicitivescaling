@@ -130,7 +130,7 @@ print("Data has been saved to hamster_k8s_resource_usage.csv")
                 script {
                     // Ensure the PATH is set for the current session
                     sh '''
-                    cp ~/.jenkins/workspace/app_dataset_csv/hamster_k8s_resource_usage.csv ~/Documents
+                    cp ~/.jenkins/workspace/app_dataset_csv_pipeline/hamster_k8s_resource_usage.csv ~/Documents
                     '''
                 }
             }
