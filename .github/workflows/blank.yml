@@ -2,11 +2,6 @@ name: CI
 
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to run CI on'
-        required: true
-        default: 'main'# This is a basic workflow to help you get started with Actions
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
